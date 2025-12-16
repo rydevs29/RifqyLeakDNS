@@ -88,7 +88,7 @@
             width: 100%;
             border-radius: 10px;
             margin-top: 10px;
-            z-index: 1; /* Agar tidak menutupi elemen lain */
+            z-index: 1; 
         }
         
         /* Status Badges */
@@ -262,8 +262,8 @@
                 document.getElementById('conn-quality').innerHTML = `<span class="badge ${badgeColor}">${quality}</span>`;
             })
             .catch(err => {
-                document.getElementById('backend-ip').innerText = "Mode Statis (Tanpa Backend)";
-                document.getElementById('latency-display').innerText = "-";
+                document.getElementById('backend-ip').innerText = "Mode Statis (Gagal Cek)";
+                document.getElementById('latency-display').innerText = "N/A";
             });
 
         // 4. WebRTC Leak Test
@@ -272,7 +272,15 @@
 
     // [BARU] Fungsi Peta Leaflet dengan Dark Mode
     function updateMap(lat, lon) {
-        if (!lat || !lon) return;
+        if (!lat || !lon) {
+            // Jika koordinat gagal dimuat, biarkan peta kosong atau beri notifikasi
+            document.getElementById('map').innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-sec);">Gagal memuat koordinat.</div>';
+            if (map !== null) {
+                map.remove();
+                map = null;
+            }
+            return;
+        }
 
         if (map !== null) {
             map.remove(); // Hapus peta lama jika ada (saat refresh)
