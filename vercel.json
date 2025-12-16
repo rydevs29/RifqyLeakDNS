@@ -1,5 +1,7 @@
 {
   "rewrites": [
-    { "source": "/api/whoami", "destination": "/api/whoami.js" }
+    { "source": "/api/whoami", "destination": "/api/whoami.js" },
+    { "source": "/api/backup-1", "destination": "/api/backup-1.js" },
+    { "source": "/api/backup-2", "destination": "/api/backup-2.js" }
   ]
 }
