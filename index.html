@@ -6,6 +6,7 @@
     <title>RifqyLeakDNS | Secure Check</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
         :root {
@@ -64,6 +65,8 @@
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .card:hover {
@@ -79,10 +82,20 @@
         .data-value { font-size: 1.5rem; font-weight: 700; word-break: break-all; margin-bottom: 5px; }
         .data-sub { font-size: 0.9rem; color: var(--text-sec); }
 
+        /* Map Container */
+        #map {
+            height: 200px;
+            width: 100%;
+            border-radius: 10px;
+            margin-top: 10px;
+            z-index: 1; /* Agar tidak menutupi elemen lain */
+        }
+        
         /* Status Badges */
         .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; margin-top: 10px; }
         .badge.safe { background: rgba(16, 185, 129, 0.2); color: var(--success); }
         .badge.danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        .badge.neutral { background: rgba(59, 130, 246, 0.2); color: var(--accent); }
 
         /* Loader */
         .skeleton { height: 2rem; background: rgba(255,255,255,0.1); border-radius: 4px; animation: pulse 1.5s infinite; width: 80%; }
@@ -163,6 +176,24 @@
             <div class="data-sub" style="margin-bottom: 5px;">API Backend Check:</div>
             <div id="backend-ip" class="data-value" style="font-size: 1rem; color: var(--accent);">Menghubungi Vercel...</div>
         </div>
+
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-tachometer-alt"></i>
+                <span class="card-title">Kualitas Koneksi</span>
+            </div>
+            <div id="latency-display" class="data-value"><div class="skeleton"></div></div>
+            <div class="data-sub">Latency ke Server</div>
+            <div id="conn-quality"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-map"></i>
+                <span class="card-title">Visualisasi Lokasi</span>
+            </div>
+            <div id="map"></div>
+        </div>
     </div>
 
     <button class="refresh-btn" onclick="fetchData()">
@@ -173,13 +204,18 @@
         &copy; 2024 RifqyLeakDNS. Powered by Vercel & GitHub Pages.
     </footer>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
+    let map = null;
+
     async function fetchData() {
-        // Reset UI to loading
+        // Reset UI Loading
         document.getElementById('ip-display').innerHTML = '<div class="skeleton"></div>';
         document.getElementById('dns-display').innerHTML = '<div class="skeleton"></div>';
+        document.getElementById('latency-display').innerHTML = '<div class="skeleton"></div>';
 
-        // 1. Cek IP & ISP Utama (Menggunakan ipapi.co)
+        // 1. Cek IP & ISP Utama + Inisialisasi Peta
         fetch('https://ipapi.co/json/')
             .then(res => res.json())
             .then(data => {
@@ -187,51 +223,79 @@
                 document.getElementById('isp-display').innerText = data.org;
                 document.getElementById('loc-display').innerText = data.city;
                 document.getElementById('loc-country').innerText = `${data.region}, ${data.country_name}`;
+                
+                // [BARU] Update Peta
+                updateMap(data.latitude, data.longitude);
             })
             .catch(() => {
                 document.getElementById('ip-display').innerText = "Gagal Memuat";
             });
 
-        // 2. Cek DNS Leak (Menggunakan EDNS endpoint dari ip-api.com)
-        // Endpoint ini melihat siapa yang me-resolve request (DNS Server kita)
+        // 2. Cek DNS Leak
         fetch('https://edns.ip-api.com/json')
             .then(res => res.json())
             .then(data => {
                 const dnsIP = data.dns.ip;
-                const dnsGeo = data.dns.geo; // Lokasi DNS Server
-                
+                const dnsGeo = data.dns.geo; 
                 document.getElementById('dns-display').innerText = dnsIP;
                 document.getElementById('dns-org').innerText = dnsGeo;
-
-                // Logika Sederhana: Jika Lokasi DNS != Lokasi IP Browser, mungkin aman (menggunakan DNS custom)
-                // Tapi user harus menilai sendiri
                 document.getElementById('dns-status').innerHTML = `<span class="badge safe">Server Terdeteksi</span>`;
             })
             .catch(() => {
                 document.getElementById('dns-display').innerText = "Tidak Terdeteksi";
             });
 
-        // 3. Cek Backend Vercel (Verifikasi IP Asli vs Proxy)
+        // 3. Cek Backend Vercel + [BARU] Hitung Latency
+        const startPing = performance.now();
         fetch('/api/whoami')
             .then(res => res.json())
             .then(data => {
+                const endPing = performance.now();
+                const latency = Math.round(endPing - startPing);
+
                 document.getElementById('backend-ip').innerText = `IP via Server: ${data.ip}`;
+                
+                // Update Latency UI
+                document.getElementById('latency-display').innerText = `${latency} ms`;
+                let quality = latency < 100 ? "Sangat Cepat" : (latency < 300 ? "Sedang" : "Lambat");
+                let badgeColor = latency < 100 ? "safe" : (latency < 300 ? "neutral" : "danger");
+                document.getElementById('conn-quality').innerHTML = `<span class="badge ${badgeColor}">${quality}</span>`;
             })
             .catch(err => {
-                console.log(err);
                 document.getElementById('backend-ip').innerText = "Mode Statis (Tanpa Backend)";
+                document.getElementById('latency-display').innerText = "-";
             });
 
         // 4. WebRTC Leak Test
         checkWebRTC();
     }
 
+    // [BARU] Fungsi Peta Leaflet dengan Dark Mode
+    function updateMap(lat, lon) {
+        if (!lat || !lon) return;
+
+        if (map !== null) {
+            map.remove(); // Hapus peta lama jika ada (saat refresh)
+        }
+
+        map = L.map('map').setView([lat, lon], 13);
+
+        // Menggunakan Tiles Dark Matter dari CartoDB agar sesuai tema
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        L.marker([lat, lon]).addTo(map)
+            .bindPopup('Perkiraan Lokasi IP')
+            .openPopup();
+    }
+
     function checkWebRTC() {
         const rtcElement = document.getElementById('webrtc-status');
         const rtc = new RTCPeerConnection({iceServers: [{urls: "stun:stun.l.google.com:19302"}]});
-        
         rtc.createDataChannel('');
-        
         rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
         
         rtc.onicecandidate = (event) => {
@@ -239,10 +303,8 @@
                 const candidate = event.candidate.candidate;
                 const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
                 const match = candidate.match(ipRegex);
-                
                 if (match) {
                     const ip = match[1];
-                    // Abaikan IP lokal
                     if (!ip.startsWith('192.168') && !ip.startsWith('10.') && !ip.startsWith('172.')) {
                         rtcElement.innerHTML = `${ip} <span class="badge danger">BOCOR!</span>`;
                     } else {
@@ -251,8 +313,6 @@
                 }
             }
         };
-        
-        // Timeout jika tidak ada candidate (berarti WebRTC disabled/aman)
         setTimeout(() => {
             if(rtcElement.innerText === "Mengecek...") {
                 rtcElement.innerHTML = `Tidak Terdeteksi <span class="badge safe">Aman</span>`;
@@ -260,7 +320,6 @@
         }, 2000);
     }
 
-    // Jalankan saat load
     window.onload = fetchData;
 </script>
 
