@@ -17,7 +17,6 @@
             --text-sec: #94a3b8;
             --success: #10b981;
             --danger: #ef4444;
-            --warning: #facc15;
             --glass-border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
@@ -89,7 +88,7 @@
             width: 100%;
             border-radius: 10px;
             margin-top: 10px;
-            z-index: 1; 
+            z-index: 1; /* Agar tidak menutupi elemen lain */
         }
         
         /* Status Badges */
@@ -97,7 +96,6 @@
         .badge.safe { background: rgba(16, 185, 129, 0.2); color: var(--success); }
         .badge.danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
         .badge.neutral { background: rgba(59, 130, 246, 0.2); color: var(--accent); }
-        .badge.warning { background: rgba(250, 202, 21, 0.2); color: var(--warning); }
 
         /* Loader */
         .skeleton { height: 2rem; background: rgba(255,255,255,0.1); border-radius: 4px; animation: pulse 1.5s infinite; width: 80%; }
@@ -196,25 +194,6 @@
             </div>
             <div id="map"></div>
         </div>
-
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-network-wired"></i>
-                <span class="card-title">IPv6 Leak Check</span>
-            </div>
-            <div id="ipv6-display" class="data-value"><div class="skeleton"></div></div>
-            <div id="ipv6-status"></div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-user-secret"></i>
-                <span class="card-title">IP Blacklist/Reputation</span>
-            </div>
-            <div id="blacklist-display" class="data-value" style="font-size: 1rem;"><div class="skeleton"></div></div>
-            <div id="blacklist-status"></div>
-        </div>
-        
     </div>
 
     <button class="refresh-btn" onclick="fetchData()">
@@ -232,29 +211,27 @@
 
     async function fetchData() {
         // Reset UI Loading
-        document.querySelectorAll('.skeleton').forEach(el => el.parentElement.innerHTML = '<div class="skeleton"></div>');
+        document.getElementById('ip-display').innerHTML = '<div class="skeleton"></div>';
+        document.getElementById('dns-display').innerHTML = '<div class="skeleton"></div>';
+        document.getElementById('latency-display').innerHTML = '<div class="skeleton"></div>';
 
-        // --- 1. IP Publik & Lokasi ---
-        let publicIp = '';
+        // 1. Cek IP & ISP Utama + Inisialisasi Peta
         fetch('https://ipapi.co/json/')
             .then(res => res.json())
             .then(data => {
-                publicIp = data.ip;
                 document.getElementById('ip-display').innerText = data.ip;
                 document.getElementById('isp-display').innerText = data.org;
                 document.getElementById('loc-display').innerText = data.city;
                 document.getElementById('loc-country').innerText = `${data.region}, ${data.country_name}`;
                 
+                // [BARU] Update Peta
                 updateMap(data.latitude, data.longitude);
-
-                // Jalankan Blacklist Check setelah IP didapat
-                checkBlacklist(data.ip);
             })
             .catch(() => {
                 document.getElementById('ip-display').innerText = "Gagal Memuat";
             });
 
-        // --- 2. Cek DNS Leak ---
+        // 2. Cek DNS Leak
         fetch('https://edns.ip-api.com/json')
             .then(res => res.json())
             .then(data => {
@@ -268,7 +245,7 @@
                 document.getElementById('dns-display').innerText = "Tidak Terdeteksi";
             });
 
-        // --- 3. Cek Backend Vercel + Hitung Latency ---
+        // 3. Cek Backend Vercel + [BARU] Hitung Latency
         const startPing = performance.now();
         fetch('/api/whoami')
             .then(res => res.json())
@@ -285,101 +262,25 @@
                 document.getElementById('conn-quality').innerHTML = `<span class="badge ${badgeColor}">${quality}</span>`;
             })
             .catch(err => {
-                document.getElementById('backend-ip').innerText = "Mode Statis (Gagal Cek)";
-                document.getElementById('latency-display').innerText = "N/A";
+                document.getElementById('backend-ip').innerText = "Mode Statis (Tanpa Backend)";
+                document.getElementById('latency-display').innerText = "-";
             });
 
-        // --- 4. WebRTC Leak Test ---
+        // 4. WebRTC Leak Test
         checkWebRTC();
-
-        // --- [BARU] 5. IPv6 Leak Test ---
-        checkIPv6();
     }
 
-    // --- FUNGSI BARU: Cek IPv6 ---
-    function checkIPv6() {
-        const ipv6Display = document.getElementById('ipv6-display');
-        const ipv6Status = document.getElementById('ipv6-status');
-
-        ipv6Display.innerHTML = "Mengecek...";
-        ipv6Status.innerHTML = "";
-
-        // Menggunakan API yang spesifik untuk IPv6
-        fetch('https://ipv6.icanhazip.com/')
-            .then(res => res.text())
-            .then(ip => {
-                const cleanIP = ip.trim();
-                if (cleanIP.includes(':')) {
-                    ipv6Display.innerText = cleanIP;
-                    ipv6Status.innerHTML = `<span class="badge warning">IPv6 Terdeteksi</span>`;
-                    
-                    // Note: Untuk tahu ini bocor atau tidak, harus dibandingkan dengan IPv4 VPN. 
-                    // Karena kita tidak tahu apakah user pakai VPN, kita hanya beri status "Terdeteksi".
-                    // Jika user pakai VPN, dan IP ini IP asli, berarti bocor.
-                } else {
-                    ipv6Display.innerText = "Tidak Ada IPv6";
-                    ipv6Status.innerHTML = `<span class="badge safe">Aman/Tidak Mendukung</span>`;
-                }
-            })
-            .catch(() => {
-                ipv6Display.innerText = "IPv6 Gagal Cek";
-                ipv6Status.innerHTML = `<span class="badge neutral">Gagal Cek</span>`;
-            });
-    }
-
-    // --- FUNGSI BARU: Cek Blacklist (menggunakan API gratis) ---
-    function checkBlacklist(ip) {
-        const blacklistDisplay = document.getElementById('blacklist-display');
-        const blacklistStatus = document.getElementById('blacklist-status');
-
-        blacklistDisplay.innerHTML = "Memverifikasi...";
-        blacklistStatus.innerHTML = "";
-
-        // Menggunakan API gratis dari abuseipdb (hanya untuk menunjukkan reputasi)
-        // Note: API ini biasanya memerlukan key. Kita akan menggunakan endpoint gratis yang lebih sederhana.
-        // Endpoint ini mengembalikan data keamanan.
-        fetch(`https://ipapi.co/${ip}/json/`)
-            .then(res => res.json())
-            .then(data => {
-                // ipapi.co sering menyertakan informasi apakah IP ini adalah VPN/Proxy
-                const isVpn = data.vpn || data.proxy || data.hosting;
-
-                if (isVpn) {
-                    blacklistDisplay.innerText = "VPN/Proxy/Hosting Terdeteksi";
-                    blacklistStatus.innerHTML = `<span class="badge danger">Potensi Resiko (High Risk)</span>`;
-                } else if (data.bogon) {
-                    blacklistDisplay.innerText = "IP Lokal/Reserved";
-                    blacklistStatus.innerHTML = `<span class="badge safe">Aman</span>`;
-                } else {
-                    blacklistDisplay.innerText = "Bersih (Residential IP)";
-                    blacklistStatus.innerHTML = `<span class="badge safe">Aman (Low Risk)</span>`;
-                }
-            })
-            .catch(() => {
-                blacklistDisplay.innerText = "Blacklist Gagal Cek";
-                blacklistStatus.innerHTML = `<span class="badge neutral">Gagal Cek</span>`;
-            });
-    }
-
-
-    // --- FUNGSI LAMA (Peta & WebRTC) ---
-
+    // [BARU] Fungsi Peta Leaflet dengan Dark Mode
     function updateMap(lat, lon) {
-        if (!lat || !lon) {
-            document.getElementById('map').innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-sec);">Gagal memuat koordinat.</div>';
-            if (map !== null) {
-                map.remove();
-                map = null;
-            }
-            return;
-        }
+        if (!lat || !lon) return;
 
         if (map !== null) {
-            map.remove(); 
+            map.remove(); // Hapus peta lama jika ada (saat refresh)
         }
 
         map = L.map('map').setView([lat, lon], 13);
 
+        // Menggunakan Tiles Dark Matter dari CartoDB agar sesuai tema
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
             subdomains: 'abcd',
