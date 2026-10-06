@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RifqyLeakDNS | Secure Check</title>
+    <title>RifqyLeakDNS - WEB</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -17,6 +17,7 @@
             --text-sec: #94a3b8;
             --success: #10b981;
             --danger: #ef4444;
+            --warning: #facc15;
             --glass-border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
@@ -34,7 +35,6 @@
             align-items: center;
         }
 
-        /* Header */
         header {
             text-align: center;
             margin-bottom: 40px;
@@ -45,7 +45,6 @@
         h1 { font-size: 2.5rem; font-weight: 800; background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         p.subtitle { color: var(--text-sec); margin-top: 10px; font-size: 1rem; }
 
-        /* Grid Layout */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -54,7 +53,6 @@
             max-width: 1000px;
         }
 
-        /* Cards */
         .card {
             background: var(--card-bg);
             backdrop-filter: blur(12px);
@@ -75,32 +73,48 @@
             border-color: rgba(255, 255, 255, 0.2);
         }
 
-        .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; padding-right: 30px; }
         .card-header i { font-size: 1.2rem; color: var(--accent); }
         .card-title { font-weight: 600; font-size: 0.9rem; color: var(--text-sec); text-transform: uppercase; letter-spacing: 1px; }
 
         .data-value { font-size: 1.5rem; font-weight: 700; word-break: break-all; margin-bottom: 5px; }
         .data-sub { font-size: 0.9rem; color: var(--text-sec); }
 
-        /* Map Container */
+        /* Copy Button Fix */
+        .copy-btn {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            background: transparent;
+            border: none;
+            color: var(--text-sec);
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: color 0.3s;
+        }
+        .copy-btn:hover { color: var(--accent); }
+
         #map {
             height: 200px;
             width: 100%;
             border-radius: 10px;
             margin-top: 10px;
-            z-index: 1; /* Agar tidak menutupi elemen lain */
+            z-index: 1; 
+        }
+
+        /* Fix Map API & Dark Mode via CSS (Anti API Key Carto) */
+        .leaflet-tile-pane {
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
         }
         
-        /* Status Badges */
         .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; margin-top: 10px; }
         .badge.safe { background: rgba(16, 185, 129, 0.2); color: var(--success); }
         .badge.danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
         .badge.neutral { background: rgba(59, 130, 246, 0.2); color: var(--accent); }
+        .badge.warning { background: rgba(250, 202, 21, 0.2); color: var(--warning); }
 
-        /* Loader */
         .skeleton { height: 2rem; background: rgba(255,255,255,0.1); border-radius: 4px; animation: pulse 1.5s infinite; width: 80%; }
         
-        /* Button */
         .refresh-btn {
             margin-top: 40px;
             background: var(--accent);
@@ -123,7 +137,6 @@
         @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Responsive Mobile */
         @media (max-width: 600px) {
             h1 { font-size: 1.8rem; }
             .grid-container { grid-template-columns: 1fr; }
@@ -138,7 +151,9 @@
     </header>
 
     <div class="grid-container">
+        <!-- 1. IP Publik -->
         <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
             <div class="card-header">
                 <i class="fas fa-globe"></i>
                 <span class="card-title">IP Publik (Browser)</span>
@@ -147,7 +162,9 @@
             <div id="isp-display" class="data-sub">Memuat ISP...</div>
         </div>
 
+        <!-- 2. DNS Server -->
         <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
             <div class="card-header">
                 <i class="fas fa-server"></i>
                 <span class="card-title">DNS Resolver</span>
@@ -157,7 +174,9 @@
             <div id="dns-status"></div>
         </div>
 
+        <!-- 3. Lokasi -->
         <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
             <div class="card-header">
                 <i class="fas fa-map-marker-alt"></i>
                 <span class="card-title">Lokasi Fisik</span>
@@ -166,7 +185,9 @@
             <div id="loc-country" class="data-sub">Memuat Peta...</div>
         </div>
 
+        <!-- 4. WebRTC -->
         <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
             <div class="card-header">
                 <i class="fas fa-shield-alt"></i>
                 <span class="card-title">Kebocoran & Validasi</span>
@@ -177,7 +198,9 @@
             <div id="backend-ip" class="data-value" style="font-size: 1rem; color: var(--accent);">Menghubungi Vercel...</div>
         </div>
 
+        <!-- 5. Latency -->
         <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
             <div class="card-header">
                 <i class="fas fa-tachometer-alt"></i>
                 <span class="card-title">Kualitas Koneksi</span>
@@ -187,12 +210,82 @@
             <div id="conn-quality"></div>
         </div>
 
+        <!-- 6. Map -->
         <div class="card">
             <div class="card-header">
                 <i class="fas fa-map"></i>
                 <span class="card-title">Visualisasi Lokasi</span>
             </div>
             <div id="map"></div>
+        </div>
+
+        <!-- [BARU] 7. OS & Browser Info -->
+        <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
+            <div class="card-header">
+                <i class="fas fa-laptop-code"></i>
+                <span class="card-title">OS & Browser</span>
+            </div>
+            <div id="os-browser-display" class="data-value" style="font-size: 1.2rem;">Mendeteksi...</div>
+            <div class="data-sub" style="margin-top: 10px;">Status Do Not Track (DNT):</div>
+            <div id="dnt-status"></div>
+        </div>
+
+        <!-- [BARU] 8. Fingerprint & Canvas -->
+        <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
+            <div class="card-header">
+                <i class="fas fa-fingerprint"></i>
+                <span class="card-title">Browser Fingerprint</span>
+            </div>
+            <div class="data-sub" style="margin-bottom: 5px;">Screen & Color Depth:</div>
+            <div id="screen-display" class="data-value" style="font-size: 1rem; margin-bottom: 10px;">Mendeteksi...</div>
+            <div class="data-sub" style="margin-bottom: 5px;">Canvas Hash Signature:</div>
+            <div id="canvas-hash" class="data-value" style="font-size: 1rem; font-family: monospace; color: var(--accent);">Mendeteksi...</div>
+        </div>
+
+        <!-- [BARU] 9. TOR Exit Node Detection -->
+        <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
+            <div class="card-header">
+                <i class="fas fa-user-ninja"></i>
+                <span class="card-title">TOR Network Check</span>
+            </div>
+            <div id="tor-display" class="data-value" style="font-size: 1.2rem;"><div class="skeleton"></div></div>
+            <div id="tor-status"></div>
+        </div>
+
+        <!-- [BARU] 10. Local Port Scanner -->
+        <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
+            <div class="card-header">
+                <i class="fas fa-network-wired"></i>
+                <span class="card-title">Local Port Scanner</span>
+            </div>
+            <div id="port-display" class="data-value" style="font-size: 1.1rem; line-height: 1.5;">Memindai Port...</div>
+            <div class="data-sub" style="margin-top: 5px;">(Mendeteksi layanan lokal terbuka)</div>
+        </div>
+
+        <!-- [BARU] 11. Network Speedtest -->
+        <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
+            <div class="card-header">
+                <i class="fas fa-rocket"></i>
+                <span class="card-title">Simple Speedtest</span>
+            </div>
+            <div id="speed-display" class="data-value"><div class="skeleton"></div></div>
+            <div id="speed-status" class="data-sub">Menguji kecepatan (Download 1MB)...</div>
+        </div>
+
+        <!-- [BARU] 12. DNS over HTTPS (DoH) -->
+        <div class="card">
+            <button class="copy-btn" onclick="copyCardData(this)" title="Salin Data"><i class="fas fa-copy"></i></button>
+            <div class="card-header">
+                <i class="fas fa-lock"></i>
+                <span class="card-title">DoH Reachability</span>
+            </div>
+            <div id="doh-display" class="data-value" style="font-size: 1.2rem;">Mengecek...</div>
+            <div class="data-sub" style="margin-top: 5px;">Konektivitas DNS Terenkripsi</div>
         </div>
     </div>
 
@@ -209,13 +302,31 @@
 <script>
     let map = null;
 
+    // FUNGSI COPY DATA
+    function copyCardData(btn) {
+        const card = btn.closest('.card');
+        let textToCopy = '';
+        const elements = card.querySelectorAll('.card-title, .data-value, .data-sub, .badge');
+        elements.forEach(el => {
+            if(!el.innerHTML.includes('<div class="skeleton">')) {
+                textToCopy += el.innerText.replace(/\n/g, ' ') + ' | ';
+            }
+        });
+        navigator.clipboard.writeText(textToCopy.slice(0, -3)).then(() => {
+            btn.innerHTML = '<i class="fas fa-check" style="color: var(--success);"></i>';
+            setTimeout(() => btn.innerHTML = '<i class="fas fa-copy"></i>', 2000);
+        });
+    }
+
     async function fetchData() {
-        // Reset UI Loading
+        // Reset Utama
         document.getElementById('ip-display').innerHTML = '<div class="skeleton"></div>';
         document.getElementById('dns-display').innerHTML = '<div class="skeleton"></div>';
         document.getElementById('latency-display').innerHTML = '<div class="skeleton"></div>';
+        document.getElementById('tor-display').innerHTML = '<div class="skeleton"></div>';
+        document.getElementById('speed-display').innerHTML = '<div class="skeleton"></div>';
 
-        // 1. Cek IP & ISP Utama + Inisialisasi Peta
+        // 1. IP Publik
         fetch('https://ipapi.co/json/')
             .then(res => res.json())
             .then(data => {
@@ -224,104 +335,200 @@
                 document.getElementById('loc-display').innerText = data.city;
                 document.getElementById('loc-country').innerText = `${data.region}, ${data.country_name}`;
                 
-                // [BARU] Update Peta
                 updateMap(data.latitude, data.longitude);
+                checkTor(data.ip);
             })
             .catch(() => {
                 document.getElementById('ip-display').innerText = "Gagal Memuat";
             });
 
-        // 2. Cek DNS Leak
+        // 2. DNS Leak
         fetch('https://edns.ip-api.com/json')
             .then(res => res.json())
             .then(data => {
-                const dnsIP = data.dns.ip;
-                const dnsGeo = data.dns.geo; 
-                document.getElementById('dns-display').innerText = dnsIP;
-                document.getElementById('dns-org').innerText = dnsGeo;
+                document.getElementById('dns-display').innerText = data.dns.ip;
+                document.getElementById('dns-org').innerText = data.dns.geo;
                 document.getElementById('dns-status').innerHTML = `<span class="badge safe">Server Terdeteksi</span>`;
             })
             .catch(() => {
                 document.getElementById('dns-display').innerText = "Tidak Terdeteksi";
             });
 
-        // 3. Cek Backend Vercel + [BARU] Hitung Latency
+        // 3. Vercel Backend
         const startPing = performance.now();
         fetch('/api/whoami')
             .then(res => res.json())
             .then(data => {
-                const endPing = performance.now();
-                const latency = Math.round(endPing - startPing);
-
+                const latency = Math.round(performance.now() - startPing);
                 document.getElementById('backend-ip').innerText = `IP via Server: ${data.ip}`;
-                
-                // Update Latency UI
                 document.getElementById('latency-display').innerText = `${latency} ms`;
-                let quality = latency < 100 ? "Sangat Cepat" : (latency < 300 ? "Sedang" : "Lambat");
-                let badgeColor = latency < 100 ? "safe" : (latency < 300 ? "neutral" : "danger");
-                document.getElementById('conn-quality').innerHTML = `<span class="badge ${badgeColor}">${quality}</span>`;
+                let badge = latency < 100 ? "safe" : (latency < 300 ? "neutral" : "danger");
+                document.getElementById('conn-quality').innerHTML = `<span class="badge ${badge}">${latency < 100 ? "Cepat" : "Lambat"}</span>`;
             })
-            .catch(err => {
+            .catch(() => {
                 document.getElementById('backend-ip').innerText = "Mode Statis (Tanpa Backend)";
                 document.getElementById('latency-display').innerText = "-";
             });
 
-        // 4. WebRTC Leak Test
         checkWebRTC();
+        getOSAndBrowser();
+        generateFingerprint();
+        runSpeedTest();
+        checkDoH();
+        scanPorts();
     }
 
-    // [BARU] Fungsi Peta Leaflet dengan Dark Mode
+    // FIX PETA (OpenStreetMap + CSS Invert, Tanpa API Key)
     function updateMap(lat, lon) {
         if (!lat || !lon) return;
-
-        if (map !== null) {
-            map.remove(); // Hapus peta lama jika ada (saat refresh)
-        }
-
+        if (map !== null) map.remove();
         map = L.map('map').setView([lat, lon], 13);
-
-        // Menggunakan Tiles Dark Matter dari CartoDB agar sesuai tema
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            subdomains: 'abcd',
+        // Menggunakan standard OSM yang gratis, CSS kita (.leaflet-tile-pane) akan mengubahnya jadi gelap.
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap',
             maxZoom: 19
         }).addTo(map);
-
-        L.marker([lat, lon]).addTo(map)
-            .bindPopup('Perkiraan Lokasi IP')
-            .openPopup();
+        L.marker([lat, lon]).addTo(map).bindPopup('Lokasi IP').openPopup();
     }
 
+    // WebRTC Leak
     function checkWebRTC() {
-        const rtcElement = document.getElementById('webrtc-status');
+        const rtcEl = document.getElementById('webrtc-status');
         const rtc = new RTCPeerConnection({iceServers: [{urls: "stun:stun.l.google.com:19302"}]});
         rtc.createDataChannel('');
-        rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
-        
-        rtc.onicecandidate = (event) => {
-            if (event && event.candidate && event.candidate.candidate) {
-                const candidate = event.candidate.candidate;
-                const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
-                const match = candidate.match(ipRegex);
+        rtc.createOffer().then(o => rtc.setLocalDescription(o));
+        rtc.onicecandidate = (e) => {
+            if (e && e.candidate && e.candidate.candidate) {
+                const match = e.candidate.candidate.match(/([0-9]{1,3}(\.[0-9]{1,3}){3})/);
                 if (match) {
                     const ip = match[1];
-                    if (!ip.startsWith('192.168') && !ip.startsWith('10.') && !ip.startsWith('172.')) {
-                        rtcElement.innerHTML = `${ip} <span class="badge danger">BOCOR!</span>`;
+                    if (!ip.startsWith('192.') && !ip.startsWith('10.') && !ip.startsWith('172.')) {
+                        rtcEl.innerHTML = `${ip} <span class="badge danger">BOCOR!</span>`;
                     } else {
-                        rtcElement.innerHTML = `Private IP: ${ip} <span class="badge safe">Aman</span>`;
+                        rtcEl.innerHTML = `Private IP: ${ip} <span class="badge safe">Aman</span>`;
                     }
                 }
             }
         };
-        setTimeout(() => {
-            if(rtcElement.innerText === "Mengecek...") {
-                rtcElement.innerHTML = `Tidak Terdeteksi <span class="badge safe">Aman</span>`;
+        setTimeout(() => { if(rtcEl.innerText === "Mengecek...") rtcEl.innerHTML = `Tertutup <span class="badge safe">Aman</span>`; }, 2000);
+    }
+
+    // [BARU] OS, Browser, & DNT
+    function getOSAndBrowser() {
+        const ua = navigator.userAgent;
+        let os = "Unknown OS";
+        if (ua.indexOf("Win") != -1) os = "Windows";
+        if (ua.indexOf("Mac") != -1) os = "MacOS";
+        if (ua.indexOf("Linux") != -1) os = "Linux";
+        if (ua.indexOf("Android") != -1) os = "Android";
+        if (ua.indexOf("like Mac") != -1) os = "iOS";
+        
+        let browser = "Unknown Browser";
+        if (ua.indexOf("Firefox") > -1) browser = "Firefox";
+        else if (ua.indexOf("Opera") > -1 || ua.indexOf("OPR") > -1) browser = "Opera";
+        else if (ua.indexOf("Trident") > -1) browser = "IE";
+        else if (ua.indexOf("Edge") > -1) browser = "Edge";
+        else if (ua.indexOf("Chrome") > -1) browser = "Chrome";
+        else if (ua.indexOf("Safari") > -1) browser = "Safari";
+
+        document.getElementById('os-browser-display').innerText = `${os} - ${browser}`;
+        
+        const dnt = navigator.doNotTrack === "1" || window.doNotTrack === "1";
+        document.getElementById('dnt-status').innerHTML = dnt ? `<span class="badge safe">Aktif (Terlindungi)</span>` : `<span class="badge warning">Tidak Aktif (Bisa Dilacak)</span>`;
+    }
+
+    // [BARU] Fingerprint & Canvas Hash
+    function generateFingerprint() {
+        document.getElementById('screen-display').innerText = `${window.screen.width}x${window.screen.height} (${window.screen.colorDepth}-bit) | ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        ctx.textBaseline = "top"; ctx.font = "14px 'Arial'"; ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "#f60"; ctx.fillRect(125,1,62,20);
+        ctx.fillStyle = "#069"; ctx.fillText("RifqyLeakDNS", 2, 15);
+        ctx.fillStyle = "rgba(102, 204, 0, 0.7)"; ctx.fillText("RifqyLeakDNS", 4, 17);
+        
+        const dataURL = canvas.toDataURL();
+        let hash = 0;
+        for (let i = 0; i < dataURL.length; i++) {
+            hash = ((hash << 5) - hash) + dataURL.charCodeAt(i);
+            hash |= 0;
+        }
+        document.getElementById('canvas-hash').innerText = Math.abs(hash).toString(16).toUpperCase();
+    }
+
+    // [BARU] TOR Check
+    function checkTor(ip) {
+        fetch(`https://onionoo.torproject.org/details?search=${ip}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.relays && data.relays.length > 0) {
+                    document.getElementById('tor-display').innerText = "TOR Terdeteksi!";
+                    document.getElementById('tor-status').innerHTML = `<span class="badge danger">IP Berasal dari TOR Exit Node</span>`;
+                } else {
+                    document.getElementById('tor-display').innerText = "Bukan TOR (Normal)";
+                    document.getElementById('tor-status').innerHTML = `<span class="badge safe">Aman (Bebas TOR)</span>`;
+                }
+            })
+            .catch(() => { document.getElementById('tor-display').innerText = "Gagal Cek TOR"; });
+    }
+
+    // [BARU] Port Scanner (Image Load Trick)
+    function scanPorts() {
+        const ports = [80, 443, 3306, 8080];
+        const portDisplay = document.getElementById('port-display');
+        portDisplay.innerHTML = '';
+        
+        ports.forEach(port => {
+            let img = new Image();
+            let timer = setTimeout(() => {
+                portDisplay.innerHTML += `Port ${port}: <span style="color:var(--success)">Tertutup (Aman)</span><br>`;
+            }, 1500);
+
+            img.onload = img.onerror = () => {
+                clearTimeout(timer);
+                // Jika merespon cepat (bahkan dengan error), ada service yg berjalan
+                portDisplay.innerHTML += `Port ${port}: <span style="color:var(--danger)">Terbuka!</span><br>`;
+            };
+            img.src = `http://127.0.0.1:${port}/favicon.ico?r=${Math.random()}`;
+        });
+    }
+
+    // [BARU] Speedtest (Download Payload 1MB dr Cloudflare)
+    function runSpeedTest() {
+        const speedDisplay = document.getElementById('speed-display');
+        const startTime = performance.now();
+        fetch('https://speed.cloudflare.com/__down?bytes=1000000', { cache: 'no-store' })
+            .then(res => res.blob())
+            .then(blob => {
+                const duration = (performance.now() - startTime) / 1000;
+                const mbps = ((blob.size * 8) / (duration * 1000000)).toFixed(2);
+                speedDisplay.innerText = `${mbps} Mbps`;
+                document.getElementById('speed-status').innerText = "Kecepatan Unduh (Server Cloudflare)";
+            })
+            .catch(() => { speedDisplay.innerText = "Gagal Uji"; });
+    }
+
+    // [BARU] DoH Check (Reachability Test)
+    function checkDoH() {
+        const dohDisplay = document.getElementById('doh-display');
+        fetch('https://cloudflare-dns.com/dns-query?name=cloudflare.com&type=A', {
+            headers: { 'accept': 'application/dns-json' }
+        })
+        .then(res => {
+            if(res.ok) {
+                dohDisplay.innerHTML = `Terkoneksi <span class="badge safe">Mendukung DoH</span>`;
+            } else {
+                throw new Error();
             }
-        }, 2000);
+        })
+        .catch(() => {
+            dohDisplay.innerHTML = `Terblokir <span class="badge warning">Tanpa DoH</span>`;
+        });
     }
 
     window.onload = fetchData;
 </script>
 
 </body>
-</html>
+                </html>
